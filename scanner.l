@@ -48,6 +48,7 @@ prefix			{ return T_PREFIX; }
 route			{ return T_ROUTE; }
 RDNSS			{ return T_RDNSS; }
 DNSSL			{ return T_DNSSL; }
+PREF64			{ return T_PREF64; }
 clients			{ return T_CLIENTS; }
 lowpanco		{ return T_LOWPANCO; }
 abro			{ return T_ABRO; }
@@ -98,6 +99,10 @@ AdvRDNSSPreference 	{ return T_AdvRDNSSPreference; }
 AdvRDNSSOpen		{ return T_AdvRDNSSOpenFlag; }
 AdvRDNSSLifetime	{ return T_AdvRDNSSLifetime; }
 FlushRDNSS		{ return T_FlushRDNSS; }
+
+AdvPREF64PLC		{ return T_AdvPREF64PLC; }
+AdvPREF64Lifetime	{ return T_AdvPREF64Lifetime; }
+FlushPREF64		{ return T_FlushPREF64; }
 
 AdvDNSSLLifetime	{ return T_AdvDNSSLLifetime; }
 FlushDNSSL		{ return T_FlushDNSSL; }

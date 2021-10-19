@@ -80,6 +80,7 @@
  * but does NOT specify a default value
  */
 #define DFLT_AdvRDNSSLifetime(iface) (3 * (iface)->MaxRtrAdvInterval)
+#define DFLT_AdvPREF64Lifetime(iface) (3 * (iface)->MaxRtrAdvInterval)
 #define DFLT_FlushRDNSSFlag 1
 
 /* DNSSL
@@ -205,6 +206,7 @@ struct nd_opt_rdnss_info_local {
 	struct in6_addr nd_opt_rdnssi_addr2;
 	struct in6_addr nd_opt_rdnssi_addr3;
 };
+
 /* pref/flag/reserved field : yyyyx00000000000 (big endian) - 00000000yyyyx000 (little indian); where yyyy = pref, x = flag */
 #if BYTE_ORDER == BIG_ENDIAN
 #define ND_OPT_RDNSSI_PREF_SHIFT 12
@@ -212,6 +214,18 @@ struct nd_opt_rdnss_info_local {
 #define ND_OPT_RDNSSI_PREF_SHIFT 4
 #endif
 #define ND_OPT_RDNSSI_PREF_MASK (0xf << ND_OPT_RDNSSI_PREF_SHIFT)
+
+#undef ND_OPT_PREF64_INFORMATION
+#define ND_OPT_PREF64_INFORMATION 38
+
+#define DFLT_FlushPREF64Flag 1
+
+struct nd_opt_pref64_info_local {
+	uint8_t nd_opt_pref64i_type;
+	uint8_t nd_opt_pref64i_len;
+	uint16_t nd_opt_pref64i_lifetime_plc;
+	uint32_t nd_opt_pref64i_prefix[3];
+};
 
 #undef ND_OPT_DNSSL_INFORMATION
 #define ND_OPT_DNSSL_INFORMATION 31

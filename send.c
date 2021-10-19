@@ -59,6 +59,7 @@ static int schedule_option_prefix(struct in6_addr const *dest, struct Interface 
 static int schedule_option_route(struct in6_addr const *dest, struct Interface const *iface, struct AdvRoute const *route);
 static int schedule_option_rdnss(struct in6_addr const *dest, struct Interface const *iface, struct AdvRDNSS const *rdnss);
 static int schedule_option_dnssl(struct in6_addr const *dest, struct Interface const *iface, struct AdvDNSSL const *dnssl);
+static int schedule_option_pref64(struct in6_addr const *dest, struct Interface const *iface, struct AdvPREF64 const *pref64);
 static int schedule_option_mtu(struct in6_addr const *dest, struct Interface const *iface);
 static int schedule_option_sllao(struct in6_addr const *dest, struct Interface const *iface);
 static int schedule_option_mipv6_rtr_adv_interval(struct in6_addr const *dest, struct Interface const *iface);
@@ -541,6 +542,42 @@ static struct safe_buffer_list *add_ra_options_rdnss(struct safe_buffer_list *sb
 	return sbl;
 }
 
+static struct safe_buffer_list *add_ra_options_pref64(struct safe_buffer_list *sbl, struct Interface const *iface,
+						     struct AdvPREF64 const *pref64, int cease_adv, struct in6_addr const *dest)
+{
+	while (pref64) {
+		struct nd_opt_pref64_info_local pref64info;
+		uint16_t temp ;
+
+		if (!cease_adv && !schedule_option_pref64(dest, iface, pref64)) {
+			pref64 = pref64->next;
+			continue;
+		}
+
+		memset(&pref64info, 0, sizeof(pref64info));
+
+		pref64info.nd_opt_pref64i_type = ND_OPT_PREF64_INFORMATION;
+		pref64info.nd_opt_pref64i_len = 2;
+
+		if (cease_adv && pref64->FlushPREF64Flag) {
+			memset(&pref64info.nd_opt_pref64i_lifetime_plc, 0, 2);
+		} else {
+			temp = pref64->AdvPREF64Lifetime;
+			temp &= 0xfff8;
+			temp |= pref64->AdvPREF64PLC;
+			temp = htons(temp);
+			memcpy(&pref64info.nd_opt_pref64i_lifetime_plc, &temp, 2);
+		}
+
+		memcpy(&pref64info.nd_opt_pref64i_prefix, &pref64->AdvPREF64Prefix, sizeof(uint32_t) * 2);
+		sbl = safe_buffer_list_append(sbl);
+		safe_buffer_append(sbl->sb, &pref64info, sizeof(pref64info));
+		pref64 = pref64->next;
+	}
+
+	return sbl;
+}
+
 static struct safe_buffer_list *add_ra_options_dnssl(struct safe_buffer_list *sbl, struct Interface const *iface,
 						     struct AdvDNSSL const *dnssl, int cease_adv, struct in6_addr const *dest)
 {
@@ -735,6 +772,10 @@ static struct safe_buffer_list *build_ra_options(struct Interface const *iface, 
 
 	if (iface->AdvDNSSLList) {
 		cur = add_ra_options_dnssl(cur, iface, iface->AdvDNSSLList, iface->state_info.cease_adv, dest);
+	}
+
+	if (iface->AdvPREF64List) {
+		cur = add_ra_options_pref64(cur, iface, iface->AdvPREF64List, iface->state_info.cease_adv, dest);
 	}
 
 	if (iface->AdvLinkMTU != 0 && schedule_option_mtu(dest, iface)) {
@@ -942,6 +983,11 @@ static int schedule_option_route(struct in6_addr const *dest, struct Interface c
 static int schedule_option_rdnss(struct in6_addr const *dest, struct Interface const *iface, struct AdvRDNSS const *rdnss)
 {
 	return schedule_helper(dest, iface, rdnss->AdvRDNSSLifetime);
+}
+
+static int schedule_option_pref64(struct in6_addr const *dest, struct Interface const *iface, struct AdvPREF64 const *rdnss)
+{
+	return schedule_helper(dest, iface, rdnss->AdvPREF64Lifetime);
 }
 
 static int schedule_option_dnssl(struct in6_addr const *dest, struct Interface const *iface, struct AdvDNSSL const *dnssl)

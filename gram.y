@@ -48,6 +48,7 @@
 %token		T_ROUTE
 %token		T_RDNSS
 %token		T_DNSSL
+%token		T_PREF64
 %token		T_CLIENTS
 %token		T_LOWPANCO
 %token		T_ABRO
@@ -109,6 +110,10 @@
 %token		T_AdvRDNSSLifetime
 %token		T_FlushRDNSS
 
+%token		T_AdvPREF64PLC
+%token		T_AdvPREF64Lifetime
+%token		T_FlushPREF64
+
 %token		T_AdvDNSSLLifetime
 %token		T_FlushDNSSL
 
@@ -132,6 +137,7 @@
 %type	<ainfo> clientslist v6addrlist_clients
 %type	<rinfo>	routedef
 %type	<rdnssinfo> rdnssdef
+%type	<pref64info> pref64def
 %type	<dnsslinfo> dnssldef
 %type   <lowpancoinfo> lowpancodef
 %type   <abroinfo> abrodef
@@ -148,6 +154,7 @@
 	struct AdvRoute		*rinfo;
 	struct AdvRDNSS		*rdnssinfo;
 	struct AdvDNSSL		*dnsslinfo;
+	struct AdvPREF64	*pref64info;
 	struct Clients		*ainfo;
 	struct AdvLowpanCo	*lowpancoinfo;
 	struct AdvAbro		*abroinfo;
@@ -162,6 +169,7 @@ static struct Interface *IfaceList;
 static struct AdvPrefix *prefix;
 static struct AdvRoute *route;
 static struct AdvRDNSS *rdnss;
+static struct AdvPREF64 *pref64;
 static struct AdvDNSSL *dnssl;
 static struct AdvLowpanCo *lowpanco;
 static struct AdvAbro  *abro;
@@ -232,6 +240,7 @@ ifaceparam 	: ifaceval
 		| clientslist 	{ ADD_TO_LL(struct Clients, ClientList, $1); }
 		| routedef 	{ ADD_TO_LL(struct AdvRoute, AdvRouteList, $1); }
 		| rdnssdef 	{ ADD_TO_LL(struct AdvRDNSS, AdvRDNSSList, $1); }
+		| pref64def 	{ ADD_TO_LL(struct AdvPREF64, AdvPREF64List, $1); }
 		| dnssldef 	{ ADD_TO_LL(struct AdvDNSSL, AdvDNSSLList, $1); }
 		| lowpancodef   { ADD_TO_LL(struct AdvLowpanCo, AdvLowpanCoList, $1); }
 		| abrodef       { ADD_TO_LL(struct AdvAbro, AdvAbroList, $1); }
@@ -729,7 +738,6 @@ rdnssplist	: rdnssplist rdnssparms
 		| rdnssparms
 		;
 
-
 rdnssparms	: T_AdvRDNSSPreference NUMBER ';'
 		{
 			flog(LOG_WARNING, "ignoring deprecated RDNSS preference");
@@ -747,6 +755,135 @@ rdnssparms	: T_AdvRDNSSPreference NUMBER ';'
 			rdnss->FlushRDNSSFlag = $2;
 		}
 		;
+
+/*
+pref64def	: pref64head '{' optional_pref64plist '}' ';'
+		{
+			$$ = pref64;
+			pref64 = NULL;
+		}
+		;
+
+pref64addrs	: pref64addrs pref64addr
+		| pref64addr
+		;
+
+pref64addr	: IPV6ADDR
+		{
+			if (!pref64) {
+				pref64 = malloc(sizeof(struct AdvPREF64));
+
+				if (pref64 == NULL) {
+					flog(LOG_CRIT, "malloc failed: %s", strerror(errno));
+					ABORT;
+				}
+
+				pref64_init_defaults(pref64, iface);
+			}
+
+			memcpy(&pref64->AdvPREF64Prefix, $1, sizeof(uint32_t) * 3);
+
+		}
+		;
+
+pref64head	: T_PREF64 pref64addrs
+		{
+			if (!pref64) {
+				flog(LOG_CRIT, "no address specified in PREF64 section");
+				ABORT;
+			}
+		}
+		;
+
+optional_pref64plist:
+		| pref64plist
+		;
+
+pref64plist	: pref64plist pref64parms
+		| pref64parms
+		;
+
+pref64parms	: T_AdvPREF64PLC NUMBER ';'
+		{
+			pref64->AdvPREF64PLC = $2;
+		}
+		| T_AdvPREF64Lifetime number_or_infinity ';'
+		{
+			pref64->AdvPREF64Lifetime = $2;
+		}
+		| T_FlushPREF64 SWITCH ';'
+		{
+			pref64->FlushPREF64Flag = $2;
+		}
+		;
+
+*/
+pref64def	: pref64head '{' optional_pref64plist '}' ';'
+		{
+			$$ = pref64;
+			pref64 = NULL;
+		}
+		;
+
+pref64head	: T_PREF64 IPV6ADDR '/' NUMBER
+		{
+			pref64 = malloc(sizeof(struct AdvPREF64));
+
+			if (pref64 == NULL) {
+				flog(LOG_CRIT, "malloc failed: %s", strerror(errno));
+				ABORT;
+			}
+
+			pref64_init_defaults(pref64, iface);
+
+			switch ($4) {
+				case 96:
+					pref64->AdvPREF64PLC = 0;
+					break;
+				case 64:
+					pref64->AdvPREF64PLC = 1;
+					break;
+				case 56:
+					pref64->AdvPREF64PLC = 2;
+					break;
+				case 48:
+					pref64->AdvPREF64PLC = 3;
+					break;
+				case 40:
+					pref64->AdvPREF64PLC = 4;
+					break;
+				case 32:
+					pref64->AdvPREF64PLC = 5;
+					break;
+				default :
+					flog(LOG_ERR, "invalid prefix64 length in %s, line %d", filename, num_lines);
+					ABORT;
+			}
+
+			memcpy(&pref64->AdvPREF64Prefix, $2, sizeof(struct in6_addr));
+		}
+		;
+
+optional_pref64plist: /* empty */
+		| pref64plist
+		;
+
+pref64plist	: pref64plist pref64parms
+		| pref64parms
+		;
+
+
+pref64parms	: T_AdvPREF64Lifetime number_or_infinity ';'
+		{
+			pref64->AdvPREF64Lifetime = $2;
+		}
+		| T_FlushPREF64 SWITCH ';'
+		{
+			pref64->FlushPREF64Flag = $2;
+		}
+		;
+
+/*******************************************/
 
 dnssldef	: dnsslhead '{' optional_dnsslplist '}' ';'
 		{

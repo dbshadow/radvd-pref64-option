@@ -102,6 +102,7 @@ struct Interface {
 	struct AdvRoute *AdvRouteList;
 	struct AdvRDNSS *AdvRDNSSList;
 	struct AdvDNSSL *AdvDNSSLList;
+	struct AdvPREF64 *AdvPREF64List;
 
 	uint32_t AdvLinkMTU; /* XXX: sllao also has an if_maxmtu value...Why? */
 	uint32_t AdvRAMTU;   /* MTU used for RA */
@@ -189,6 +190,15 @@ struct AdvRDNSS {
 	struct in6_addr AdvRDNSSAddr3;
 
 	struct AdvRDNSS *next;
+};
+
+struct AdvPREF64 {
+	int AdvPREF64Lifetime;
+	int AdvPREF64PLC;
+	int FlushPREF64Flag;
+	struct in6_addr AdvPREF64Prefix;
+
+	struct AdvPREF64 *next;
 };
 
 struct AdvDNSSL {
@@ -308,6 +318,7 @@ void free_ifaces(struct Interface *ifaces);
 void iface_init_defaults(struct Interface *);
 void prefix_init_defaults(struct AdvPrefix *);
 void rdnss_init_defaults(struct AdvRDNSS *, struct Interface *);
+void pref64_init_defaults(struct AdvPREF64 *, struct Interface *);
 void reschedule_iface(struct Interface *iface, double next);
 void route_init_defaults(struct AdvRoute *, struct Interface *);
 void touch_iface(struct Interface *iface);

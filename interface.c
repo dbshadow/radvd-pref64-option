@@ -144,6 +144,15 @@ void rdnss_init_defaults(struct AdvRDNSS *rdnss, struct Interface *iface)
 	rdnss->FlushRDNSSFlag = DFLT_FlushRDNSSFlag;
 }
 
+void pref64_init_defaults(struct AdvPREF64 *pref64, struct Interface *iface)
+{
+	memset(pref64, 0, sizeof(struct AdvPREF64));
+
+	memset(&pref64->AdvPREF64Lifetime, (3 * (iface)->MaxRtrAdvInterval), 13);
+//	memcpy(&pref64->AdvPREF64PLC, 0, 3);
+	pref64->FlushPREF64Flag = DFLT_FlushPREF64Flag;
+}
+
 void dnssl_init_defaults(struct AdvDNSSL *dnssl, struct Interface *iface)
 {
 	memset(dnssl, 0, sizeof(struct AdvDNSSL));
@@ -406,6 +415,14 @@ static void free_iface_list(struct Interface *iface)
 
 			free(rdnss);
 			rdnss = next_rdnss;
+		}
+
+		struct AdvPREF64 *pref64 = iface->AdvPREF64List;
+		while (pref64) {
+			struct AdvPREF64 *next_pref64 = pref64->next;
+
+			free(pref64);
+			pref64 = next_pref64;
 		}
 
 		struct AdvDNSSL *dnssl = iface->AdvDNSSLList;
